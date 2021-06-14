@@ -114,6 +114,36 @@ def parseInputConfig(map_detail):
     df_parser_attri_list.append(parser_attri_dict)
 
 
+    explode_attri_list = [c for c in attri_list if '[' in c and '.' not in c]
+
+
+    print(explode_attri_list)
+
+    for attri in explode_attri_list:
+        iter_columns_stg1 = []
+        iter_dict_stg1 = {}
+        iter_rename_dict_stg1 = {}
+        iter_dict_stg1['explode_attr'] = attri.strip('[]')
+        iter_rename_dict_stg1[attri.strip('[]')] = [x[1][1] for x in enum_map_list if x[1][0] == attri][0]
+        prev_columns_stg1 = df_parser_attri_list[-1]['columns']
+        prev_rename_stg1 = df_parser_attri_list[-1]['rename']
+
+        for p_col in prev_columns_stg1:
+            if p_col in prev_rename_stg1.keys():
+                iter_columns_stg1.append(prev_rename_stg1[p_col])
+            else:
+                iter_columns_stg1.append(p_col)
+
+        uniq_iter_columns_stg1 = [i for n, i in enumerate(iter_columns_stg1) if i not in iter_columns_stg1[:n]]
+
+        iter_dict_stg1['columns'] = uniq_iter_columns_stg1
+        iter_dict_stg1['rename'] = iter_rename_dict_stg1
+
+        df_parser_attri_list.append(iter_dict_stg1)
+
+    print("after stage1======================================")
+    print(df_parser_attri_list)
+
     if returnCnt == 0:
         print(df_parser_attri_list)
         return df_parser_attri_list
@@ -173,8 +203,36 @@ def parseInputConfig(map_detail):
                 attri_indices = [(ix,iy) for ix, row in enumerate(nested_attri_list) for iy, i in enumerate(row) if i.split('*')[1] == attri_element or i == attri_element + '[]']
                 #print("attri_indices: ", attri_indices) 
                 if nested_attri_list[attri_indices[0][0]][-1].split('*')[1].strip('[]') == attri_element.strip('[]'):
-                    #print("the continue statement: ", attri_element.strip('[]'))
-                    continue
+                    expl_ren_index = int(nested_attri_list[attri_indices[0][0]][-1].split('*')[0].strip('c'))
+                    print("expl_ren_index: ",expl_ren_index )
+                    print("the continue statement: ", attri_element.strip('[]'))
+                    print("the last placed explode attribute: ",iter_dict['explode_attr'])
+                    print("===================================================")
+                    if '[]' in attri_element:
+                        expl_columns = []
+                        expl_iter_dict = {}
+                        expl_iter_rename_dict = {attri_element.strip('[]') : enum_map_list[expl_ren_index][1][1] }
+                        print("expl_iter_rename_dict :", expl_iter_rename_dict )
+                        expl_iter_dict['explode_attr'] = iter_dict['explode_attr']
+                        print('we need to explode the last attri')
+                        expl_prev_columns =  df_parser_attri_list[-1]['columns']
+                        expl_prev_rename = df_parser_attri_list[-1]['rename']
+                        for p_col in expl_prev_columns:
+                            if '.' in p_col and p_col.split('.')[-1].strip('[]') == attri_element.strip('[]'):
+                                expl_columns.append(attri_element.strip('[]'))
+                            elif p_col.split('.')[-1] in expl_prev_rename.keys():
+                                expl_columns.append(expl_prev_rename[p_col.split('.')[-1]])
+                            else:
+                                expl_columns.append(p_col)
+                            
+                        expl_iter_dict['columns'] = expl_columns
+                        expl_iter_dict['rename'] = expl_iter_rename_dict
+                        df_parser_attri_list.append(expl_iter_dict)
+
+                        print("===================================================")
+                        continue
+                    else:
+                        continue
                 #print("did not continue")
                 next_attributes = [nested_attri_list[i][j+1].split('*')[1] for i,j in attri_indices]
                 index_last_attribute_chk = [nested_attri_list[i][j+1] for i,j in attri_indices]
@@ -183,6 +241,8 @@ def parseInputConfig(map_detail):
                     col_index,col_name = cols.split('*')
                     col_index = int(col_index.strip('c'))
                     if col_name.strip('[]') == [x[1][0].split('.')[-1].strip('[]') for x in enum_map_list if x[0] == col_index][0]:
+                        if '[]' in col_name:
+                            continue
                         iter_rename_dict[col_name.strip('[]')] = [x[1][1] for x in enum_map_list if x[0] == col_index][0]
 
                 #uniq_next_attributes = [x.strip('[]') for x in next_attributes if not (x in seen or seen_add(x))]
@@ -201,7 +261,7 @@ def parseInputConfig(map_detail):
                 prev_rename = df_parser_attri_list[-1]['rename']
 
                 for p_col in prev_columns:
-                    if p_col.split('.')[-1] in [c_col.split('.')[-0] for c_col in df_cols]:
+                    if p_col.split('.')[-1] in [c_col.split('.')[0] for c_col in df_cols]:
                         continue
                     elif p_col.split('.')[-1] in prev_rename.keys():
                         df_cols.append(prev_rename[p_col.split('.')[-1]])
@@ -453,3 +513,22 @@ else:
     exit(1) 
 
 exit(0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
