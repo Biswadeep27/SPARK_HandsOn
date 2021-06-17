@@ -16,7 +16,32 @@ from pyspark.sql import functions as F
 import sys
 import json
 
+#############################################################################################
+# Input parameters to the script                                                            #
+#############################################################################################
+v_src_hdfs = sys.argv[1]
+v_tgt_hdfs = sys.argv[2]
+v_num_part = int(sys.argv[4])
+v_parse_idc = sys.argv[5]
+v_attr_lst = sys.argv[6]
 v_app_name=sys.argv[3]
+
+
+#LOGGER.info(f'Reading input  Attribute list config Json.')
+
+
+
+
+try:
+    with open(v_attr_lst,'r') as attr_conf:
+        attr_map = json.load(attr_conf)
+except Exception as e:
+    tb = sys.exc_info()[2]
+    lineno = tb.tb_lineno
+    #LOGGER.error(f'Code Error at LINE: {lineno}.')
+    #LOGGER.error(f'The process failed due to invalid Attribute list config Json: {e}')
+    exit(1)  
+
 
 conf = SparkConf().setMaster("yarn").setAppName(v_app_name).set("spark.hadoop.validateOutputSpecs", "false")
 sc = SparkContext(conf = conf)
@@ -30,14 +55,7 @@ LOGGER.info("==============================pyspark script logger initialized====
 
 spark=SparkSession.builder.appName(v_app_name).config("spark.debug.maxToStringFields", "10000").getOrCreate()
 
-#############################################################################################
-# Input parameters to the script                                                            #
-#############################################################################################
-v_src_hdfs = sys.argv[1]
-v_tgt_hdfs = sys.argv[2]
-v_num_part = int(sys.argv[4])
-v_parse_idc = sys.argv[5]
-v_attr_lst = sys.argv[6]
+
 
 print(f'Parameters: Source Feed: {v_src_hdfs}, Traget Feed: {v_tgt_hdfs}.')
 LOGGER.info(f'Parameters: Source Feed: {v_src_hdfs}, Traget Feed: {v_tgt_hdfs}.')
@@ -375,17 +393,18 @@ def sparkParseJSON(data_df,parse_config):
 #############################################################################################
 # Reading input  Attribute list config Json                                                 #
 #############################################################################################
-LOGGER.info(f'Reading input  Attribute list config Json.')
-
+'''
 try:
     with open(v_attr_lst,'r') as attr_conf:
         attr_map = json.load(attr_conf)
 except Exception as e:
     tb = sys.exc_info()[2]
     lineno = tb.tb_lineno
-    LOGGER.error(f'Code Error at LINE: {lineno}.')
-    LOGGER.error(f'The process failed due to invalid Attribute list config Json: {e}')
-    exit(1)    
+    #LOGGER.error(f'Code Error at LINE: {lineno}.')
+    #LOGGER.error(f'The process failed due to invalid Attribute list config Json: {e}')
+    exit(1) 
+
+'''  
 
 if v_parse_idc.strip() != '':
     attr_dict = [x for x in attr_map if x['indicator'] == v_parse_idc.lower()][0]
@@ -498,7 +517,7 @@ if v_parse_idc.strip() != '':
     LOGGER.info(f'Writing into the target feed: {v_tgt_hdfs}')
 
     try:
-        data_df.repartition(v_num_part).write.save(v_tgt_hdfs,sep='|',format='csv',mode='overwrite',header=True)
+        data_df.repartition(v_num_part).write.save(v_tgt_hdfs,sep='|',format='csv',mode='overwrite',header=True,escape='',quote='')
         LOGGER.info(f'Target pricing Flat feed generation is successful.')
 
     except Exception as e:
@@ -512,6 +531,7 @@ else:
     LOGGER.error(f'The script failed to parse.Please Provide the parsing indicator in the input parameter -i.')
     exit(1) 
 
+print("the spark Application Id : ", sc.applicationId )
 exit(0)
 
 
